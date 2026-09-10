@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useSimulation } from '../state/SimulationContext';
 import { getRiskCopy } from '../data/riskCopy';
 import { Card } from '../components/common/Card';
@@ -8,10 +8,20 @@ import { ArrowLeft, CheckCircle2, Info } from 'lucide-react';
 export default function RiskExplainability() {
   const { riskId } = useParams();
   const navigate = useNavigate();
-  const { risks, vitals, environment, baseline } = useSimulation();
+  const { risks, vitals, environment, baseline, earlyPrediction } = useSimulation();
+  const [searchParams] = useSearchParams();
+  const isPredicted = searchParams.get('predicted') === 'true';
 
   const risk = risks.find(r => r.riskId === riskId);
   const copy = useMemo(() => getRiskCopy(riskId, vitals, environment, baseline), [riskId, vitals, environment, baseline]);
+  
+  const displayFactors = isPredicted && earlyPrediction?.warning?.riskId === riskId 
+    ? earlyPrediction.warning.trendFactors 
+    : copy.factors;
+    
+  const displaySeverity = isPredicted && earlyPrediction?.warning?.riskId === riskId
+    ? earlyPrediction.warning.predictedSeverity
+    : risk?.severity;
 
   if (!risk) return null;
 
@@ -37,8 +47,8 @@ export default function RiskExplainability() {
     }
   };
 
-  const colorClass = getColor(risk.severity);
-  const bgClass = getBgColor(risk.severity);
+  const colorClass = getColor(displaySeverity);
+  const bgClass = getBgColor(displaySeverity);
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -51,9 +61,12 @@ export default function RiskExplainability() {
       </button>
 
       <div className={`rounded-2xl border p-6 mb-8 ${bgClass}`}>
+        <div className="text-[0.65rem] font-bold tracking-widest uppercase mb-2 opacity-80">
+          {isPredicted ? 'Forecasted' : 'Current Status'}
+        </div>
         <h1 className={`text-3xl font-sans font-bold capitalize ${colorClass}`}>
-          {risk.severity !== 'SAFE' && risk.severity !== 'LOW' && '⚠️ '}
-          {risk.severity} {riskId} Risk
+          {displaySeverity !== 'SAFE' && displaySeverity !== 'LOW' && '⚠️ '}
+          {displaySeverity} {riskId} Risk
         </h1>
       </div>
 
@@ -61,7 +74,7 @@ export default function RiskExplainability() {
       <div className="flex items-center justify-between max-w-md mx-auto mb-12">
         <div className="flex flex-col items-center gap-2">
           <div className="w-8 h-8 rounded-full bg-pulse/20 text-pulse flex items-center justify-center font-mono text-sm border border-pulse/30">1</div>
-          <span className="text-[0.65rem] font-bold text-text-secondary uppercase tracking-widest">Detection</span>
+          <span className="text-[0.65rem] font-bold text-text-secondary uppercase tracking-widest">{isPredicted ? 'Prediction' : 'Detection'}</span>
         </div>
         <div className="flex-1 h-[1px] bg-hairline mx-4 -mt-6"></div>
         <div className="flex flex-col items-center gap-2">
@@ -79,10 +92,10 @@ export default function RiskExplainability() {
         <Card className="p-6 p-6 bg-surface-raised border-hairline">
           <h2 className="text-lg font-medium text-text-primary mb-6 flex items-center gap-2 border-b border-hairline pb-4">
             <Info className="w-5 h-5 text-text-secondary" />
-            Why?
+            {isPredicted ? 'Why this might happen' : 'Why?'}
           </h2>
           <ul className="space-y-4">
-            {copy.factors.map((factor, idx) => (
+            {displayFactors.map((factor, idx) => (
               <li key={idx} className="flex items-start gap-3">
                 <div className="w-1.5 h-1.5 rounded-full bg-pulse mt-2 shrink-0"></div>
                 <span className="text-text-primary font-medium leading-relaxed text-[0.9375rem]">{factor}</span>
@@ -97,7 +110,7 @@ export default function RiskExplainability() {
         <Card className="p-6 p-6 bg-surface-raised border-hairline">
           <h2 className="text-lg font-medium text-text-primary mb-6 flex items-center gap-2 border-b border-hairline pb-4">
             <CheckCircle2 className="w-5 h-5 text-pulse" />
-            Recommended Action
+            {isPredicted ? 'How to prevent it' : 'Recommended Action'}
           </h2>
           <ul className="space-y-4">
             {copy.actions.map((action, idx) => (

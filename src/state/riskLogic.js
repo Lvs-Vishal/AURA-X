@@ -66,3 +66,94 @@ export const getOverallRisk = (risks) => {
   if (maxScore >= 20) return { level: 'LOW', label: '🟢 LOW — Monitor Slowly', color: 'safe' };
   return { level: 'SAFE', label: '🟢 SAFE — Stable', color: 'safe' };
 };
+
+export const computePrediction = (vitalsHistory, envHistory, baseline, disasterMode) => {
+  if (vitalsHistory.length < 2 || envHistory.length < 2) return { warning: null, projectedRisks: [] };
+
+  const currentVitals = vitalsHistory[vitalsHistory.length - 1];
+  const oldVitals = vitalsHistory[0];
+  const currentEnv = envHistory[envHistory.length - 1];
+  const oldEnv = envHistory[0];
+
+  const timeDiffMins = (currentVitals.timestamp - oldVitals.timestamp) / 60000;
+  if (timeDiffMins <= 0) return { warning: null, projectedRisks: [] };
+
+  const rates = {
+    heartRate: (currentVitals.heartRate - oldVitals.heartRate) / timeDiffMins,
+    bodyTemp: (currentVitals.bodyTemp - oldVitals.bodyTemp) / timeDiffMins,
+    ambientTemp: (currentEnv.ambientTemp - oldEnv.ambientTemp) / timeDiffMins,
+    humidity: (currentEnv.humidity - oldEnv.humidity) / timeDiffMins,
+  };
+
+  const horizonMins = 30;
+
+  const projectedVitals = {
+    ...currentVitals,
+    heartRate: Math.max(40, Math.min(220, currentVitals.heartRate + rates.heartRate * horizonMins)),
+    bodyTemp: Math.max(35, Math.min(42, currentVitals.bodyTemp + rates.bodyTemp * horizonMins)),
+  };
+
+  const projectedEnv = {
+    ...currentEnv,
+    ambientTemp: Math.max(-20, Math.min(60, currentEnv.ambientTemp + rates.ambientTemp * horizonMins)),
+    humidity: Math.max(0, Math.min(100, currentEnv.humidity + rates.humidity * horizonMins)),
+    exposureMinutes: currentEnv.exposureMinutes + horizonMins
+  };
+
+  const currentRisks = computeRisk(currentVitals, currentEnv, baseline, disasterMode);
+  const projectedRisks = computeRisk(projectedVitals, projectedEnv, baseline, disasterMode);
+
+  const severityOrder = { SAFE: 0, LOW: 1, MEDIUM: 2, MODERATE: 3, HIGH: 4 };
+
+  let worstEscalation = null;
+
+  for (let i = 0; i < currentRisks.length; i++) {
+    const current = currentRisks[i];
+    const projected = projectedRisks[i];
+    
+    if (severityOrder[projected.severity] > severityOrder[current.severity]) {
+      let nextThreshold = 20; 
+      if (current.severity === 'LOW') nextThreshold = 40; 
+      else if (current.severity === 'MEDIUM') nextThreshold = 60; 
+      else if (current.severity === 'MODERATE') nextThreshold = 80;
+
+      if (current.riskId === 'fall' && current.severity === 'SAFE') nextThreshold = 50;
+
+      let etaMinutes = horizonMins;
+      const scoreRate = (projected.score - current.score) / horizonMins;
+      if (scoreRate > 0) {
+        etaMinutes = (nextThreshold - current.score) / scoreRate;
+      }
+      
+      etaMinutes = Math.max(10, Math.min(90, Math.round(etaMinutes)));
+
+      const trendFactors = [];
+      if (rates.ambientTemp > 0.1) trendFactors.push(`Ambient temperature rising ${rates.ambientTemp.toFixed(1)}°C/min`);
+      if (rates.heartRate > 0.5) trendFactors.push(`Heart rate climbing, currently ${currentVitals.heartRate.toFixed(0)} BPM`);
+      if (rates.bodyTemp > 0.05) trendFactors.push(`Body temperature rising ${rates.bodyTemp.toFixed(2)}°C/min`);
+      if (rates.humidity > 0.5) trendFactors.push(`Humidity increasing ${rates.humidity.toFixed(1)}%/min`);
+      if (trendFactors.length === 0) trendFactors.push(`Continuous exposure escalating risk`);
+
+      const confidence = timeDiffMins >= 2 ? 'High' : (timeDiffMins >= 1 ? 'Moderate' : 'Low');
+
+      const escalation = {
+        riskId: current.riskId,
+        currentSeverity: current.severity,
+        predictedSeverity: projected.severity,
+        etaMinutes,
+        trendFactors: trendFactors.slice(0, 2),
+        confidence
+      };
+
+      if (!worstEscalation || etaMinutes < worstEscalation.etaMinutes) {
+        worstEscalation = escalation;
+      }
+    }
+  }
+
+  return {
+    warning: worstEscalation,
+    projectedRisks
+  };
+};
+

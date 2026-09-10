@@ -5,7 +5,7 @@ import { Card } from '../components/common/Card';
 import { Button } from '../components/common/Button';
 import { AuraGlow } from '../components/aura/AuraGlow';
 import { RiskBadge } from '../components/aura/RiskBadge';
-import { Activity, Flame, Wind, HeartPulse, Moon, AlertOctagon, Droplets, CloudFog, Clock, Pill } from 'lucide-react';
+import { Activity, Flame, Wind, HeartPulse, Moon, AlertOctagon, Droplets, CloudFog, Clock, Pill, TrendingUp, CheckCircle2, ArrowRight } from 'lucide-react';
 import { ResponsiveContainer, LineChart, Line } from 'recharts';
 
 function Sparkline({ data, dataKey, color }) {
@@ -23,7 +23,7 @@ function Sparkline({ data, dataKey, color }) {
 
 export default function Home() {
   const navigate = useNavigate();
-  const { userProfile, vitals, vitalsHistory, environment, risks, overallRisk, medications, logDose } = useSimulation();
+  const { userProfile, vitals, vitalsHistory, environment, risks, overallRisk, medications, logDose, earlyPrediction } = useSimulation();
 
   const getRiskIcon = (id) => {
     switch(id) {
@@ -87,6 +87,53 @@ export default function Home() {
           </AuraGlow>
         </Card>
 
+        {/* Early Prediction Panel */}
+        {earlyPrediction?.warning ? (
+          <Card 
+            className="p-4 border-caution/30 bg-caution/5 cursor-pointer hover:border-caution/50 transition-colors"
+            onClick={() => navigate(`/risk/${earlyPrediction.warning.riskId}?predicted=true`)}
+          >
+            <div className="flex justify-between items-start mb-3">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <TrendingUp className="w-4 h-4 text-caution" />
+                  <span className="text-[0.875rem] font-bold text-text-primary">Early Prediction</span>
+                  <span className="text-[0.65rem] text-text-secondary px-1.5 py-0.5 rounded bg-surface border border-hairline uppercase tracking-wider">{earlyPrediction.warning.confidence} Confidence</span>
+                </div>
+                <div className="text-[0.6875rem] text-text-secondary">Based on your last 5 minutes of data</div>
+              </div>
+              <ArrowRight className="w-4 h-4 text-text-secondary" />
+            </div>
+            
+            <div className="mb-3">
+              <div className="text-[0.9375rem] font-medium text-text-primary flex items-center gap-2">
+                {getRiskIcon(earlyPrediction.warning.riskId) && React.createElement(getRiskIcon(earlyPrediction.warning.riskId), { className: "w-4 h-4 text-caution" })}
+                {getRiskLabel(earlyPrediction.warning.riskId)} Risk <span className="text-caution">→ trending toward {earlyPrediction.warning.predictedSeverity}</span>
+              </div>
+              <div className="text-sm font-mono text-caution mt-1">~{earlyPrediction.warning.etaMinutes} min if this continues</div>
+            </div>
+
+            <ul className="space-y-1.5">
+              {earlyPrediction.warning.trendFactors.map((factor, idx) => (
+                <li key={idx} className="flex items-start gap-2 text-[0.8125rem] text-text-secondary">
+                  <div className="w-1 h-1 rounded-full bg-caution/50 mt-1.5 shrink-0"></div>
+                  {factor}
+                </li>
+              ))}
+            </ul>
+          </Card>
+        ) : (
+          <Card className="p-4 border-pulse/20 bg-surface-raised flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-pulse/10 text-pulse flex items-center justify-center shrink-0">
+              <CheckCircle2 className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="text-[0.875rem] font-bold text-text-primary">Early Prediction</div>
+              <div className="text-[0.8125rem] text-pulse">✅ No early warnings — your trends are stable</div>
+            </div>
+          </Card>
+        )}
+
         {/* Vitals Row */}
         <div className="grid grid-cols-2 gap-4">
           <Card className="p-4 pb-6 relative overflow-hidden group hover:border-text-secondary transition-colors cursor-default">
@@ -148,6 +195,9 @@ export default function Home() {
                 'fall': '🚶 Fall / Distress Risk'
               };
 
+              const projectedRisk = earlyPrediction?.projectedRisks?.find(pr => pr.riskId === risk.riskId);
+              const isTrending = projectedRisk && projectedRisk.severity !== risk.severity;
+
               return (
                 <div 
                   key={risk.riskId}
@@ -161,23 +211,24 @@ export default function Home() {
                     risk.severity === 'SAFE' || risk.severity === 'LOW' ? 'text-safe' :
                     risk.severity === 'HIGH' ? 'text-danger' : 'text-caution'
                   }`}>
-                    — {getEmoji(risk.severity)} {risk.severity}
+                    {getEmoji(risk.severity)} {risk.severity}
+                    {isTrending && (
+                      <>
+                        <ArrowRight className="w-3 h-3 text-text-secondary mx-0.5" />
+                        <span className={
+                          projectedRisk.severity === 'HIGH' ? 'text-danger' :
+                          projectedRisk.severity === 'SAFE' || projectedRisk.severity === 'LOW' ? 'text-safe' : 'text-caution'
+                        }>{projectedRisk.severity}</span>
+                      </>
+                    )}
+                    {!isTrending && <span className="text-text-secondary lowercase normal-case ml-1 font-normal">(stable)</span>}
                   </div>
                 </div>
               );
             })}
           </div>
 
-          <div className="pt-5 border-t border-hairline space-y-3">
-            <div className="text-[0.8125rem] leading-relaxed">
-              <span className="text-text-secondary font-medium">Prediction Horizon: </span>
-              <span className="text-text-primary">Next 30–60 minutes</span>
-            </div>
-            <div className="text-[0.8125rem] leading-relaxed">
-              <span className="text-text-secondary font-medium">Confidence: </span>
-              <span className="text-text-primary">Based on current sensor quality + personal baseline + environment + activity</span>
-            </div>
-          </div>
+
         </Card>
 
         {/* Next Medication */}

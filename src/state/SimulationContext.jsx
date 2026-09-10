@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
-import { computeRisk, getOverallRisk } from './riskLogic';
+import { computeRisk, getOverallRisk, computePrediction } from './riskLogic';
 
 const SimulationContext = createContext(null);
 
@@ -141,6 +141,10 @@ export const SimulationProvider = ({ children }) => {
   });
   
   const [vitalsHistory, setVitalsHistory] = useState([]);
+  const [environmentHistory, setEnvironmentHistory] = useState([]);
+
+  // Notification state to avoid spamming
+  const [notifiedPredictions, setNotifiedPredictions] = useState(new Set());
 
   // Simulation Engine (Ticks every 2s)
   useEffect(() => {
@@ -172,7 +176,7 @@ export const SimulationProvider = ({ children }) => {
         
         setVitalsHistory(hist => {
           const newHist = [...hist, nextVitals];
-          if (newHist.length > 60) newHist.shift();
+          if (newHist.length > 150) newHist.shift(); // 5 minutes at 2s ticks
           return newHist;
         });
 
@@ -193,7 +197,7 @@ export const SimulationProvider = ({ children }) => {
           airQuality = 'Good';
         }
 
-        return {
+        const nextEnv = {
           ...prev,
           timestamp: Date.now(),
           ambientTemp,
@@ -201,6 +205,14 @@ export const SimulationProvider = ({ children }) => {
           airQuality,
           exposureMinutes: exposureMinutes + 1,
         };
+
+        setEnvironmentHistory(hist => {
+          const newHist = [...hist, nextEnv];
+          if (newHist.length > 150) newHist.shift(); // 5 minutes at 2s ticks
+          return newHist;
+        });
+
+        return nextEnv;
       });
 
     }, 2000);
@@ -211,6 +223,29 @@ export const SimulationProvider = ({ children }) => {
   // Derived Risks
   const risks = useMemo(() => computeRisk(vitals, environment, baseline, disasterMode), [vitals, environment, baseline, disasterMode]);
   const overallRisk = useMemo(() => getOverallRisk(risks), [risks]);
+  
+  const earlyPrediction = useMemo(() => {
+    return computePrediction(vitalsHistory, environmentHistory, baseline, disasterMode);
+  }, [vitalsHistory, environmentHistory, baseline, disasterMode]);
+
+  // Proactive Warning Notification
+  useEffect(() => {
+    if (!earlyPrediction?.warning) return;
+    const { warning } = earlyPrediction;
+    
+    if (warning.confidence === 'High' && warning.etaMinutes <= 20) {
+      const notifKey = `${warning.riskId}-${warning.predictedSeverity}`;
+      if (!notifiedPredictions.has(notifKey)) {
+        if (Notification.permission === 'granted') {
+          new Notification(`${warning.riskId.charAt(0).toUpperCase() + warning.riskId.slice(1)} Risk Escalation`, {
+            body: `Risk may reach ${warning.predictedSeverity} in ~${warning.etaMinutes} min.`,
+            icon: '/vite.svg'
+          });
+        }
+        setNotifiedPredictions(prev => new Set(prev).add(notifKey));
+      }
+    }
+  }, [earlyPrediction, notifiedPredictions]);
 
   const value = {
     onboardingComplete,
@@ -231,7 +266,8 @@ export const SimulationProvider = ({ children }) => {
     environment,
     baseline,
     risks,
-    overallRisk
+    overallRisk,
+    earlyPrediction
   };
 
   return (
