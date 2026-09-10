@@ -1,0 +1,9 @@
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+@layer base {
+  html, body, #root {
+    @apply bg-ink text-text-primary font-sans antialiased h-full w-full m-0 p-0;
+  }
+}
