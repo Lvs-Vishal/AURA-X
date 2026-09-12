@@ -3,7 +3,7 @@ import { Card } from '../components/common/Card';
 import { SegmentedControl } from '../components/common/SegmentedControl';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, LineChart, Line } from 'recharts';
 import { TrendingUp, TrendingDown, Minus, Flame, Moon, AlertOctagon, Pill } from 'lucide-react';
-import { useSimulation } from '../state/SimulationContext';
+import { useFirebaseData } from '../state/useFirebaseData';
 
 const timeRanges = [
   { id: 'today', label: 'Today' },
@@ -41,7 +41,7 @@ const mockWeeklyVitals = [
 
 export default function History() {
   const [range, setRange] = useState('7days');
-  const { medications } = useSimulation();
+  const { medications, vitalsHistory } = useFirebaseData();
 
   const adherence = React.useMemo(() => {
     if (!medications || medications.length === 0) return null;

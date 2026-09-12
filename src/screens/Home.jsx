@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useSimulation } from '../state/SimulationContext';
+import { useFirebaseData } from '../state/useFirebaseData';
 import { Card } from '../components/common/Card';
 import { Button } from '../components/common/Button';
 import { AuraGlow } from '../components/aura/AuraGlow';
@@ -23,7 +23,7 @@ function Sparkline({ data, dataKey, color }) {
 
 export default function Home() {
   const navigate = useNavigate();
-  const { userProfile, vitals, vitalsHistory, environment, risks, overallRisk, medications, logDose, earlyPrediction } = useSimulation();
+  const { userProfile, vitals, vitalsHistory, environment, risks, overallRisk, medications, logDose, earlyPrediction } = useFirebaseData();
 
   const getRiskIcon = (id) => {
     switch(id) {
@@ -158,6 +158,11 @@ export default function Home() {
           <Card className="p-4 pb-6 flex flex-col justify-center bg-surface-raised border-hairline">
             <div className="text-[0.6875rem] font-bold tracking-wider text-text-secondary uppercase mb-2">Sleep</div>
             <div className="text-lg font-mono text-text-primary">{Math.floor(vitals.sleepHours)}h {Math.round((vitals.sleepHours % 1) * 60)}m</div>
+          </Card>
+          <Card className="p-4 pb-6 relative overflow-hidden group hover:border-text-secondary transition-colors cursor-default">
+            <div className="text-[0.6875rem] font-bold tracking-wider text-text-secondary uppercase mb-2 group-hover:text-pulse transition-colors">GSR (Stress)</div>
+            <div className="text-2xl font-mono text-text-primary">{vitals.gsr?.toFixed(1) || '0.0'} <span className="text-sm text-text-secondary">µS</span></div>
+            <Sparkline data={vitalsHistory} dataKey="gsr" color="#B48EAD" />
           </Card>
         </div>
 
@@ -300,6 +305,7 @@ export default function Home() {
               </div>
               <div className="text-right">
                 <div className="font-sans text-sm text-text-primary max-w-[120px] text-right leading-tight">{environment.airQuality}</div>
+                <div className="text-[0.65rem] font-bold text-text-secondary tracking-widest mt-1">PM2.5: {environment.pm25?.toFixed(1) || '0'} µg/m³</div>
               </div>
             </div>
 

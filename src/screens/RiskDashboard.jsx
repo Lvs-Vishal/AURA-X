@@ -1,13 +1,13 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useSimulation } from '../state/SimulationContext';
+import { useFirebaseData } from '../state/useFirebaseData';
 import { Card } from '../components/common/Card';
 import { RiskBadge } from '../components/aura/RiskBadge';
 import { Activity, Flame, Wind, HeartPulse, Moon, AlertOctagon, ArrowRight } from 'lucide-react';
 
 export default function RiskDashboard() {
   const navigate = useNavigate();
-  const { risks, overallRisk, earlyPrediction } = useSimulation();
+  const { risks, overallRisk, earlyPrediction } = useFirebaseData();
 
   const getRiskIcon = (id) => {
     switch(id) {

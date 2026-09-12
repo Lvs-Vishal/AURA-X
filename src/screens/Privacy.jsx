@@ -1,39 +1,69 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useSimulation } from '../state/SimulationContext';
+import { useFirebaseData } from '../state/useFirebaseData';
+import { db, auth } from '../firebase';
+import { doc, getDoc, collection, getDocs, deleteDoc, updateDoc } from 'firebase/firestore';
+import { signOut } from 'firebase/auth';
 import { Card } from '../components/common/Card';
 import { Button } from '../components/common/Button';
 import { Shield, Cloud, MapPin, Share2, Database, Download, Trash2, CheckCircle2 } from 'lucide-react';
 
 export default function Privacy() {
   const navigate = useNavigate();
-  const { privacySettings, setPrivacySettings, setOnboardingComplete, setUserProfile, userProfile } = useSimulation();
+  const { privacySettings, uid } = useFirebaseData();
   
   const [exporting, setExporting] = useState(false);
   const [exportDone, setExportDone] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  const toggleSetting = (key) => {
-    setPrivacySettings(prev => ({
-      ...prev,
-      [key]: !prev[key]
-    }));
+  const toggleSetting = async (key) => {
+    if (!uid || !privacySettings) return;
+    const newSettings = { ...privacySettings, [key]: !privacySettings[key] };
+    await updateDoc(doc(db, 'users', uid), { privacySettings: newSettings });
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
     setExporting(true);
     setExportDone(false);
-    setTimeout(() => {
+    
+    try {
+      if (uid) {
+        const data = {};
+        const userDoc = await getDoc(doc(db, 'users', uid));
+        if (userDoc.exists()) data.profile = userDoc.data();
+        
+        const cols = ['medications', 'vitalsHistory', 'timelineEvents', 'emergencyLog'];
+        for (const c of cols) {
+          const snap = await getDocs(collection(db, 'users', uid, c));
+          data[c] = snap.docs.map(d => d.data());
+        }
+        
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'aura-x-data.json';
+        a.click();
+      }
       setExporting(false);
       setExportDone(true);
       setTimeout(() => setExportDone(false), 3000);
-    }, 1500);
+    } catch(e) {
+      console.error(e);
+      setExporting(false);
+    }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
+    if (uid) {
+      try {
+        await deleteDoc(doc(db, 'users', uid));
+        await signOut(auth);
+      } catch (e) {
+        console.error(e);
+      }
+    }
     localStorage.clear();
-    setOnboardingComplete(false);
-    setUserProfile(null);
     navigate('/onboarding');
   };
 
@@ -133,7 +163,7 @@ export default function Privacy() {
         {showDeleteConfirm ? (
           <Card className="p-6 border-danger/30 bg-danger/5">
             <div className="text-center mb-6">
-              <div className="text-danger font-medium mb-1 text-lg">Delete all local data?</div>
+              <div className="text-danger font-medium mb-1 text-lg">Delete all data?</div>
               <div className="text-sm text-text-secondary">This will remove your profile and clear all history permanently.</div>
             </div>
             <div className="flex gap-4">

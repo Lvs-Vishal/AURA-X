@@ -11,9 +11,9 @@ export const computeRisk = (vitals, env, baseline, disasterMode) => {
 
   // 2. Respiratory Risk
   let respScore = 0;
-  if (env.airQuality === 'Unhealthy') respScore += 50;
-  else if (env.airQuality === 'Unhealthy for Sensitive Groups') respScore += 30;
-  else if (env.airQuality === 'Moderate') respScore += 10;
+  if (env.pm25 > 55) respScore += 50;
+  else if (env.pm25 > 35) respScore += 30;
+  else if (env.pm25 > 12) respScore += 10;
   if (vitals.spo2 < baseline.spo2 - 2) respScore += 20;
   if (disasterMode === 'pollution') respScore += 30;
 
@@ -28,6 +28,7 @@ export const computeRisk = (vitals, env, baseline, disasterMode) => {
   if (vitals.sleepHours < 6) fatigueScore += (6 - vitals.sleepHours) * 10;
   if (vitals.activityLevel === 'High') fatigueScore += 20;
   if (env.exposureMinutes > 60) fatigueScore += 15;
+  if (vitals.gsr > baseline.gsr * 1.5) fatigueScore += 15;
   
   // 5. Fall Risk (mostly safe unless triggered, handled via events mostly, but give a base score based on fatigue/age)
   let fallScore = (fatigueScore > 60) ? 20 : 0;

@@ -1,5 +1,5 @@
 import React from 'react';
-import { useSimulation } from '../state/SimulationContext';
+import { useFirebaseData } from '../state/useFirebaseData';
 import { Card } from '../components/common/Card';
 import { ResponsiveContainer, AreaChart, Area, LineChart, Line, YAxis } from 'recharts';
 
@@ -39,7 +39,7 @@ function LiveChartCard({ title, value, unit, data, dataKey, color, domain = ['au
 }
 
 export default function LiveMonitoring() {
-  const { vitals, vitalsHistory, environment } = useSimulation();
+  const { vitals, vitalsHistory, environment, environmentHistory } = useFirebaseData();
 
   return (
     <div className="space-y-6 md:space-y-8">
@@ -80,6 +80,25 @@ export default function LiveMonitoring() {
           color="#F2B84B" 
           domain={[35, 42]} 
         />
+        <LiveChartCard 
+          title="⚡ GSR" 
+          value={vitals.gsr?.toFixed(1) || '0.0'} 
+          unit="µS" 
+          data={vitalsHistory} 
+          dataKey="gsr" 
+          color="#B48EAD" 
+          domain={['auto', 'auto']} 
+        />
+        <LiveChartCard 
+          title="🌫️ PM2.5" 
+          value={environment.pm25?.toFixed(0) || '0'} 
+          unit="µg/m³" 
+          data={environmentHistory} 
+          dataKey="pm25" 
+          color="#A3BE8C" 
+          domain={[0, 200]} 
+          type="area"
+        />
       </div>
 
       <h2 className="text-lg font-medium text-text-primary mt-8 mb-4 border-b border-hairline pb-4 pl-2">Environment & Activity</h2>
@@ -95,7 +114,8 @@ export default function LiveMonitoring() {
         </Card>
         <Card className="p-5 bg-surface border-hairline">
           <div className="text-[0.6875rem] font-bold text-text-secondary tracking-widest uppercase mb-2">Air Quality</div>
-          <div className="text-lg font-sans text-text-primary truncate">{environment.airQuality}</div>
+          <div className="text-sm font-sans text-text-primary truncate">{environment.airQuality}</div>
+          <div className="text-xs text-text-secondary mt-1">{environment.pm25?.toFixed(1) || '0'} µg/m³</div>
         </Card>
         <Card className="p-5 bg-surface border-hairline">
           <div className="text-[0.6875rem] font-bold text-text-secondary tracking-widest uppercase mb-2">Activity Level</div>

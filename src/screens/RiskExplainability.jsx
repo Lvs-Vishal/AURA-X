@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { useSimulation } from '../state/SimulationContext';
+import { useFirebaseData } from '../state/useFirebaseData';
 import { getRiskCopy } from '../data/riskCopy';
 import { Card } from '../components/common/Card';
 import { ArrowLeft, CheckCircle2, Info } from 'lucide-react';
@@ -8,7 +8,7 @@ import { ArrowLeft, CheckCircle2, Info } from 'lucide-react';
 export default function RiskExplainability() {
   const { riskId } = useParams();
   const navigate = useNavigate();
-  const { risks, vitals, environment, baseline, earlyPrediction } = useSimulation();
+  const { risks, vitals, environment, baseline, earlyPrediction } = useFirebaseData();
   const [searchParams] = useSearchParams();
   const isPredicted = searchParams.get('predicted') === 'true';
 

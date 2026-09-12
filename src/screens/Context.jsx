@@ -87,6 +87,7 @@ export default function Context() {
                 <h3 className="text-[0.6875rem] font-bold text-text-secondary tracking-widest uppercase mb-4">AI Inputs Heavily Weighted</h3>
                 <div className="flex flex-wrap gap-2 text-[0.8125rem] text-text-primary">
                   <span className="px-3 py-1.5 bg-surface-raised rounded-xl border border-hairline">Air Quality</span>
+                  <span className="px-3 py-1.5 bg-surface-raised rounded-xl border border-hairline">Particulate Exposure</span>
                   <span className="px-3 py-1.5 bg-surface-raised rounded-xl border border-hairline">SpO₂</span>
                   <span className="px-3 py-1.5 bg-surface-raised rounded-xl border border-hairline">HR</span>
                   <span className="px-3 py-1.5 bg-surface-raised rounded-xl border border-hairline">Activity</span>

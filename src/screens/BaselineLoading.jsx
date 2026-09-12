@@ -21,7 +21,8 @@ export default function BaselineLoading() {
       }, 2600)
     ];
     return () => timers.forEach(clearTimeout);
-  }, [navigate, setOnboardingComplete]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const items = [
     "Baseline loaded",

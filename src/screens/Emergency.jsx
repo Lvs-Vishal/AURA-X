@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useSimulation } from '../state/SimulationContext';
+import { useFirebaseData } from '../state/useFirebaseData';
+import { db } from '../firebase';
+import { collection, addDoc } from 'firebase/firestore';
 import { Card } from '../components/common/Card';
 import { Button } from '../components/common/Button';
 import { CheckCircle2, ShieldAlert, MapPin, Phone, AlertOctagon } from 'lucide-react';
 import { motion, useAnimation } from 'framer-motion';
 
 export default function Emergency() {
-  const { userProfile } = useSimulation();
+  const { userProfile, uid, notify } = useFirebaseData();
   
   const [isHolding, setIsHolding] = useState(false);
   const [holdProgress, setHoldProgress] = useState(0);
@@ -51,11 +53,26 @@ export default function Emergency() {
     }
   };
 
-  const triggerSOS = () => {
+  const triggerSOS = async () => {
     setSosSent(true);
     setIsHolding(false);
     setHoldProgress(100);
     controls.set({ strokeDashoffset: 0 });
+    
+    if (uid) {
+      try {
+        await addDoc(collection(db, 'users', uid, 'emergencyLog'), {
+          timestamp: Date.now(),
+          type: 'sos',
+          status: 'triggered'
+        });
+        if (notify) {
+          notify('emergency', 'SOS Triggered', 'Emergency SOS has been sent.', '/emergency');
+        }
+      } catch(e) {
+        console.error("Error writing emergency log:", e);
+      }
+    }
   };
 
   // Fall Detection Demo

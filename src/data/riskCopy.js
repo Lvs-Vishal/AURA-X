@@ -19,7 +19,7 @@ export const getRiskCopy = (riskId, vitals, env, baseline) => {
     case 'respiratory':
       return {
         factors: [
-          `Air Quality: ${env.airQuality}`,
+          `Air Quality: ${env.airQuality} (${env.pm25.toFixed(1)} µg/m³ PM2.5)`,
           `SpO₂ at ${vitals.spo2.toFixed(0)}%`,
           `${vitals.activityLevel} physical activity`
         ],
@@ -49,7 +49,8 @@ export const getRiskCopy = (riskId, vitals, env, baseline) => {
         factors: [
           `Prolonged ${vitals.activityLevel} activity`,
           `Sleep duration: ${vitals.sleepHours} hours`,
-          `Continuous exposure: ${env.exposureMinutes} min`
+          `Continuous exposure: ${env.exposureMinutes} min`,
+          ...(vitals.gsr > baseline.gsr * 1.5 ? [`Elevated skin conductance (stress) at ${vitals.gsr.toFixed(1)} µS`] : [])
         ],
         actions: [
           "Take a mandatory 15-minute break",
